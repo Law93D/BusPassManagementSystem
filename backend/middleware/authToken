@@ -1,0 +1,32 @@
+const jwt = require('jsonwebtoken');
+require('dotenv').config();
+
+function authenticateToken(req, res, next) {
+    try {
+        // Get token from the authorization header
+        const authHeader = req.headers['authorization'];
+        const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+
+        if (!token) {
+            return res.status(401).json({ success: false, msg: 'Access token is missing' });
+        }
+
+        // Verify the token
+        jwt.verify(token, process.env.JWT_SECRET || 'defaultSecretKey', (err, decoded) => {
+            if (err) {
+                if (err.name === 'TokenExpiredError') {
+                    return res.status(401).json({ success: false, msg: 'Access token has expired' });
+                }
+                return res.status(403).json({ success: false, msg: 'Invalid access token' });
+            }
+
+            req.user = decoded; // Attach the user payload to the request object
+            next(); // Proceed to the next middleware or route handler
+        });
+    } catch (err) {
+        console.error('Authentication Middleware Error:', err.message);
+        res.status(500).json({ success: false, msg: 'Server error' });
+    }
+}
+
+module.exports = authenticateToken;
